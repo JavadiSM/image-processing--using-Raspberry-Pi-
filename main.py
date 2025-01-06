@@ -1,6 +1,6 @@
 import cv2  
 import numpy as np  
-import enums
+from enums import enums
 
 def main(vid_cap,url):
     while True:  
@@ -9,17 +9,15 @@ def main(vid_cap,url):
         if not ret:  
             print("Error: Could not read frame.")  
             break  
-
-        # Perform image processing (example: convert to grayscale)  
-        show_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  
-        
         # Display the resulting frames  
-        cv2.imshow('Original Frame', frame)  # Show the original frame  
-        cv2.imshow('Gray Frame', show_frame)  # Show the processed frame  
+        cv2.imshow('Original Frame', frame)  # Show the original frame
+        exit_check()
+        
 
-        # Exit on 'q' key  
-        if cv2.waitKey(1) & 0xFF == enums.EXIT_KEY:  
-            break 
+def exit_check():
+    if cv2.waitKey(1) & 0xFF == enums.EXIT_KEY:
+        vid_cap.release()  
+        cv2.destroyAllWindows()
 
 def connect(ip_address):
     url = ip_address
@@ -32,8 +30,6 @@ def connect(ip_address):
     return cap,url   
 
 if __name__ == '__main__':    
-    vid_cap,url = connect(enums.URL)
-    # Release the video capture object and close all OpenCV windows  
+    print(enums.URL.value)
+    vid_cap,url = connect(enums.URL.value)
     main(vid_cap,url)
-    vid_cap.release()  
-    cv2.destroyAllWindows()
