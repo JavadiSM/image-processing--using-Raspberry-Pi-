@@ -17,9 +17,13 @@ def main(vid_cap:cv2.VideoCapture, fps = 1) -> None:
         frame type is cv2.typing.MatLike
         """
         # proccess input to computers eye
+        blank = np.zeros(frame.shape, dtype='uint8')
         result = see_frame(frame)
+        countoures,hierarchies = cv2.findContours(result,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
         cv2.imshow('computer eye',result)
         
+        cv2.drawContours(blank,countoures,-1,(0,255,0),5)
+        cv2.imshow('edges',blank)
         # Check for exit condition
         if exit_check(vid_cap):
             vid_cap.release()
@@ -30,16 +34,19 @@ def see_frame(frame):
     """
     computer only tends to see lines, borders, rather than photo
     """
-    frame = rescale(frame)
-    blur = cv2.GaussianBlur(frame,(3,3), cv2.BORDER_DEFAULT)
-    canny = cv2.Canny(blur,100,150)
-    dilated = cv2.dilate(canny,(15,20),iterations=10)
-    erdored = cv2.erode(dilated,(10,15), iterations=10)
-    return erdored
+    gray = rescale(frame)
+    gray = cv2.cvtColor(gray,cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray,(7,7), cv2.BORDER_DEFAULT)
+    ret, threshold = cv2.threshold(blur,125,255,cv2.THRESH_BINARY)
+    # DO NOT DELETE LINES COMMENTED I NEED THEM OK?
+    # canny = cv2.Canny(blur,125,175)
+    # dilated = cv2.dilate(canny,(15,20),iterations=10)
+    # erdored = cv2.erode(dilated,(10,15), iterations=10)
+    return threshold
 
 
 def exit_check(vid_cap):
-    if cv2.waitKey(10) & 0xFF == ord('x'):
+    if cv2.waitKey(10) & 0xFF == ord('q'):
         return True
     return False
 
