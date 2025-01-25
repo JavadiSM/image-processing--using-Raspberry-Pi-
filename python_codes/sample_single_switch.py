@@ -3,7 +3,7 @@ import time
 import threading
 
 GPIO.setmode(GPIO.BCM)
-switch_pin = 18
+switch_pin = 18 
 GPIO.setup(switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 def check_switch():
