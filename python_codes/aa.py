@@ -1,47 +1,53 @@
 import cv2  
 import numpy as np  
 
+def rescale(frame, scale: float = 0.8) -> np.ndarray:  
+    # Get dimensions of the original frame  
+    height, width = frame.shape[:2]  
+    
+    # Calculate new dimensions  
+    new_dims = (int(width * scale), int(height * scale))  
+    
+    # Resize the frame
+    resized_frame = cv2.resize(frame, new_dims, interpolation=cv2.INTER_AREA)  
+    
+    return resized_frame
+
 def see_frame(frame):
-    """
-    computer only tends to see lines, borders, rather than photo
-    """
-    # gray = rescale(frame)
-    gray = frame
-    gray = cv2.cvtColor(gray,cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray,(7,7), cv2.BORDER_DEFAULT)
-    ret, threshold = cv2.threshold(blur,125,255,cv2.THRESH_BINARY)
-    # DO NOT DELETE LINES COMMENTED I NEED THEM OK?
-    # canny = cv2.Canny(blur,125,175)
-    # dilated = cv2.dilate(canny,(15,20),iterations=10)
-    # erdored = cv2.erode(dilated,(10,15), iterations=10)
-    return threshold
+    frame = rescale(frame)
+    return frame
 
 # Function to calculate the length of the red line  
-def measure_red_line(frame):  
-    # Convert the frame to HSV color space  
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)  
+def measure_red_line(cap):  
+    final_size = 0
+    for i in range(100):
+        ret, frame = cap.read()
+        frame = see_frame(frame)
+        # Convert the frame to HSV color space  
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)  
 
-    # Define the range for the color red  
-    lower_red1 = np.array([0, 100, 100])  
-    upper_red1 = np.array([10, 255, 255])  
-    lower_red2 = np.array([170, 100, 100])  
-    upper_red2 = np.array([180, 255, 255])  
+        # Define the range for the color red  
+        lower_red1 = np.array([0, 100, 100])  
+        upper_red1 = np.array([10, 255, 255])
+        lower_red2 = np.array([170, 100, 100])  
+        upper_red2 = np.array([180, 255, 255])  
 
-    # Create masks for red color  
-    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)  
-    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)  
-    mask = mask1 + mask2
+        # Create masks for red color  
+        mask1 = cv2.inRange(hsv, lower_red1, upper_red1)  
+        mask2 = cv2.inRange(hsv, lower_red2, upper_red2)  
+        mask = mask1 + mask2
 
-    # Find contours in the mask  
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)  
-    
-    max_length = 0  
-    for cnt in contours:  
-        length = cv2.arcLength(cnt, True)  # Calculate the length of the contour
-        if length > max_length:  # Keep track of the maximum length found  
-            max_length = length  
-            
-    return max_length  
+        # Find contours in the mask  
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)  
+        
+        max_length = 0  
+        for cnt in contours:
+            length = cv2.arcLength(cnt, True)  # Calculate the length of the contour
+            if length > max_length:  # Keep track of the maximum length found  
+                max_length = length  
+                
+        final_size += max_length
+    return final_size / 100
 
 # Function to calculate areas of shapes detected  
 def calculate_area(frame, scale):  
@@ -54,7 +60,7 @@ def calculate_area(frame, scale):
     for cnt in contours:
         area = cv2.contourArea(cnt)
         if area > 1000:  # Threshold for minimum area  
-            areas.append(area / (scale ** 2))  # Calculate the area relative to the scale
+            areas.append(area / (scale ** 2) * 100)  # Calculate the area relative to the scale
             cnts.append(cnt)
     return areas, tuple(cnts)
 
@@ -75,12 +81,7 @@ def main():
 
     while True:
         ret, frame = cap.read()
-
-        '''blank = np.zeros(frame.shape, dtype='uint8')
-        result = see_frame(frame)
-        countoures,hierarchies = cv2.findContours(result,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(blank,countoures,-1,(0,255,0),5)
-        frame = blank'''
+        frame = see_frame(frame)
 
         
         if not ret:
@@ -103,20 +104,20 @@ def main():
                     # Calculate the centroid for displaying the area  
                     M = cv2.moments(contours[i])
                     if M['m00'] != 0:
-                        cX = int(M['m10'] / M['m00'])  
+                        cX = int(M['m10'] / M['m00'])
                         cY = int(M['m01'] / M['m00'])
                         cv2.putText(frame, f"Area: {all_areas[i]}", (cX - 50, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)  
 
         key = cv2.waitKey(1) & 0xFF  
         if key == ord('r'):  # Measure and update the scale when 'r' is pressed
-            scale = measure_red_line(frame)
+            scale = measure_red_line(cap)
             all_areas = []
         
         if key == ord('p'):  # When 'p' is pressed, switch to area calculation mode  
-            if scale is not None:  
+            if scale is not None:
                 all_areas, contours = calculate_area(frame, scale)
 
-        if key == ord('q'):  
+        if key == ord('q'):
             break  
 
         cv2.imshow("Calculate Areas", frame)  # Show all frames in the ""Calculate Areas" window
