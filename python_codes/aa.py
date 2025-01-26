@@ -14,7 +14,7 @@ def rescale(frame, scale: float = 0.8) -> np.ndarray:
     return resized_frame
 
 def see_frame(frame):
-    frame = rescale(frame)
+    frame = rescale(frame,0.5)
     return frame
 
 # Function to calculate the length of the red line  
@@ -66,7 +66,7 @@ def calculate_area(frame, scale):
 
 # Main function  
 def main():  
-    cap = cv2.VideoCapture('http://192.168.8.144:8080/video')
+    cap = cv2.VideoCapture('http://192.168.1.8:8080/video')
 
     cv2.namedWindow("Calculate Areas")  # Create a single named window called ""Calculate Areas"
     print("Press 'r' to measure the red line for calibration.")  
