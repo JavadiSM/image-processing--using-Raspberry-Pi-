@@ -66,7 +66,7 @@ def calculate_area(frame, scale):
 
 # Main function  
 def main():  
-    cap = cv2.VideoCapture('http://192.168.8.144:8080/video')
+    cap = cv2.VideoCapture('http://192.168.1.8:8080/video')
 
     cv2.namedWindow("Calculate Areas")  # Create a single named window called ""Calculate Areas"
     print("Press 'r' to measure the red line for calibration.")  
