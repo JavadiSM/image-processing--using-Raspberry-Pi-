@@ -14,7 +14,7 @@ def rescale(frame, scale: float = 0.8) -> np.ndarray:
     return resized_frame
 
 def see_frame(frame):
-    frame = rescale(frame)
+    frame = rescale(frame,0.5)
     return frame
 
 # Function to calculate the length of the red line  
