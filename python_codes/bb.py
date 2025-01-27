@@ -14,10 +14,26 @@ def calculate_area(frame, scale):
         if area > 1000:  # Threshold for minimum area  
             areas.append(area / (scale ** 2))  # Calculate the area relative to the scale
             cnts.append(cnt)
+            cv2.drawContours(frame, [cnt], -1, (0, 255, 0), 2)
+    
     return areas
 
 
+def draw_contours(frame):  
+    # Convert the frame to grayscale  
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  
+    
+    # Apply a binary threshold to the image  
+    _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)  
+    
+    # Find contours in the thresholded image  
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)  
+    
+    # Loop through the contours and draw them on the original frame  
+    for contour in contours:  
+        cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)  # Draw contour in green  
 
+    return frame 
 
 def rescale(frame, scale: float = 0.8) -> np.ndarray:  
     # Get dimensions of the original frame  
@@ -30,7 +46,79 @@ def rescale(frame, scale: float = 0.8) -> np.ndarray:
     resized_frame = cv2.resize(frame, new_dims, interpolation=cv2.INTER_AREA)  
     
     return resized_frame
+def detect_blue_and_blackout(image):  
+    """Detect blue areas in the image, blackout everything else, and annotate area sizes."""  
+    
+    # Convert the image from BGR to HSV color space  
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)  
 
+    # Define HSV range for blue color  
+    lower_blue = np.array([100, 150, 0])    # Adjusted lower range  
+    upper_blue = np.array([140, 255, 255])  # Adjusted upper range  
+
+    # Create a mask for detecting blue in the defined range  
+    blue_mask = cv2.inRange(hsv_image, lower_blue, upper_blue)  
+
+    # Create an output image to keep only blue areas and make everything else black  
+    output_image = np.zeros_like(image)  
+    output_image[blue_mask > 0] = image[blue_mask > 0]  
+
+    # Find contours in the blue mask  
+    contours, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)  
+    cs = []
+    # Loop through the contours to calculate area and draw rectangles  
+    for contour in contours:  
+        area = cv2.contourArea(contour)  
+        if area >= 500:
+            cs.append(contour)
+        # Draw the contour on the output image  
+        # cv2.drawContours(output_image, [contour], -1, (0, 255, 0), 2)  # Draw contour in green  
+        
+        # Calculate the position for the area text  
+        # M = cv2.moments(contour)  
+        # if M["m00"] != 0:  # To avoid division by zero  
+        #     cX = int(M["m10"] / M["m00"])  
+        #     cY = int(M["m01"] / M["m00"])  
+        #     # Annotate the area on the output image  
+        #     cv2.putText(output_image, f"Area: {int(area)}", (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)  
+
+    return output_image, cs
+
+def blue_show(image,cnts,areas,index):  
+    """Detect blue areas in the image, blackout everything else, and annotate area sizes."""  
+
+    # Convert the image from BGR to HSV color space  
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)  
+
+    lower_blue = np.array([100, 150, 0])    # Adjusted lower range  
+    upper_blue = np.array([140, 255, 255])  # Adjusted upper range  
+
+    # Create a mask for detecting blue in the defined range  
+    blue_mask = cv2.inRange(hsv_image, lower_blue, upper_blue)  
+
+    # Create an output image to keep only blue areas and make everything else black  
+    output_image = np.zeros_like(image)  
+    output_image[blue_mask > 0] = image[blue_mask > 0]  
+
+    # Create an output image to keep only blue areas and make everything else black  
+    output_image = np.zeros_like(image)  
+    output_image[blue_mask > 0] = image[blue_mask > 0]  
+    # Loop through the contours to calculate area and draw rectangles  
+    for i,contour in enumerate(cnts):  
+        area = cv2.contourArea(contour)  
+        if i==index:
+            cv2.drawContours(output_image, [contour], -1, (0, 255, 0), 2)  # Draw contour in green  
+            
+            M = cv2.moments(contour)  
+            if M["m00"] != 0:  # To avoid division by zero  
+                cX = int(M["m10"] / M["m00"])  
+                cY = int(M["m01"] / M["m00"])  
+                # Annotate the area on the output image  
+                cv2.putText(output_image, f"Area: {int(area)}", (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)  
+            break
+        else:
+            continue
+    return output_image
 
 def detect_red_and_blackout(image):  
     """Detect red areas in the image and blackout everything else."""  
@@ -166,9 +254,8 @@ def contour_length_or_area(contour):
     
     # Determine if the contour is closed (indicating a filled shape)  
     is_closed = True if cv2.isContourConvex(contour) else False  
-    print(f"calculated len:{length},area:{area}")
+    print(f"calculated len{length},area{area}")
     # Return length if it's likely a line or curve, otherwise return area  
-    return area
     if is_closed:  
         return area  # If the contour is a closed shape (filled), return the area.  
     else:  
@@ -182,7 +269,7 @@ def process_image(image):
     
     # Create a mask for black pixels: set a threshold to define "black"  
     # Here we consider pixels with intensity below 50 as black  
-    black_mask = gray < 100  # Boolean mask for black pixels  
+    black_mask = gray < 250  # Boolean mask for black pixels  
     
     # Create an output image initialized to white  
     result = np.ones_like(image) * 255  # Start with a white image  
@@ -192,7 +279,7 @@ def process_image(image):
     dilated_black = cv2.dilate(gray, kernel)  # Dilate the grayscale image to thicken the black areas  
     
     # Create a mask from the dilated image where we want to keep black  
-    dilated_mask = dilated_black < 100  # Mask for dilated black areas  
+    dilated_mask = dilated_black < 50  # Mask for dilated black areas  
     
     # Combine the masks to retain only the thickened black lines in the result  
     result[dilated_mask] = image[dilated_mask]  # Retain original color in black areas  
@@ -236,33 +323,57 @@ def main():
     if not cap.isOpened():
         print("Error: Camera not accessible.")
         return
+    
+    last_blues = None
+    flag =False
     last_template = None
+    lst_blue_cnts = None
+    areas = None
+    index = 0
+    image_to_show = None
     while True:
         ret, frame = cap.read()
         if not ret:
             print("Error: Failed to capture image.")
             break
         frame = rescale(frame,0.7)
-        cv2.imshow('Frame', frame)
-
         key = cv2.waitKey(1) & 0xFF
+        if flag:
+            if key == 81:  # Left arrow key  
+                index -=1
+            elif key == 83:  # Right arrow key  
+                index +=1
+            image_to_show = blue_show(last_blues,lst_blue_cnts,areas ,(index%len(areas))+len(areas)%len(areas))
+        else:
+            image_to_show = frame
+        cv2.imshow("result",image_to_show)
         if key == ord('r'):
+            flag = False
+            image_to_show = None
+            index = 0
             last_template = similarity_detector(frame)
             print("Red sign detected")
 
         # If the template has been recorded, match it if 'p' is pressed
         if last_template is not None:
             if key == ord('p'):  # Search for matches only when 'p' is pressed
+                flag = True
+                index = 0
                 nau = detect_red_and_blackout(frame)
                 cv2.imshow("reds", nau)
                 cnts = last_template(nau)
+                A = cv2.contourArea(cnts)
+                print(A)
                 # Draw matches
                 length = contour_length_or_area(cnts)
                 print(f"length is {length}")
                 nau = process_image(frame)
-                b =calculate_area(nau,length)
-                cv2.imshow("areas", nau)
-                for a in b:
+                blu,lst_blue_cnts=detect_blue_and_blackout(frame)
+                last_blues = blu
+                image_to_show = last_blues
+                areas = calculate_area(blu,length)
+                cv2.imshow("areas", blu)
+                for a in areas:
                     print(a)
                
 
