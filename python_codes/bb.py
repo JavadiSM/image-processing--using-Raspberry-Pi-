@@ -16,28 +16,9 @@ def calculate_area(frame, scale):
             cnts.append(cnt)
     return areas
 
-def find_red_objects(frame):
-    """
-    Process the frame to find red objects and return the mask.
-    """
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    # Define the range for red color
-    lower_red1 = np.array([0, 100, 100])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([170, 100, 100])
-    upper_red2 = np.array([180, 255, 255])
 
-    # Create masks for red color
-    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-    mask = cv2.bitwise_or(mask1, mask2)
 
-    # Morphological operations to improve the mask
-    kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
-    return mask
 def rescale(frame, scale: float = 0.8) -> np.ndarray:  
     # Get dimensions of the original frame  
     height, width = frame.shape[:2]  
@@ -185,8 +166,9 @@ def contour_length_or_area(contour):
     
     # Determine if the contour is closed (indicating a filled shape)  
     is_closed = True if cv2.isContourConvex(contour) else False  
-    
+    print(f"calculated len:{length},area:{area}")
     # Return length if it's likely a line or curve, otherwise return area  
+    return area
     if is_closed:  
         return area  # If the contour is a closed shape (filled), return the area.  
     else:  
@@ -260,21 +242,13 @@ def main():
         if not ret:
             print("Error: Failed to capture image.")
             break
-        frame = rescale(frame,0.8)
+        frame = rescale(frame,0.7)
         cv2.imshow('Frame', frame)
-        mask = find_red_objects(frame)
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
         key = cv2.waitKey(1) & 0xFF
-
-
-        # Draw all found contours
-        for contour in contours:
-            if cv2.contourArea(contour) > 100:
-                cv2.drawContours(frame, [contour], -1, (0, 255, 0), 3)
-                (x, y, w, h) = cv2.boundingRect(contour)
-                if key == ord('r'):
-                    last_template = similarity_detector(frame)
-                    print("Red sign detected")
+        if key == ord('r'):
+            last_template = similarity_detector(frame)
+            print("Red sign detected")
 
         # If the template has been recorded, match it if 'p' is pressed
         if last_template is not None:
@@ -286,8 +260,8 @@ def main():
                 length = contour_length_or_area(cnts)
                 print(f"length is {length}")
                 nau = process_image(frame)
+                b =calculate_area(nau,length)
                 cv2.imshow("areas", nau)
-                b = calculate_area(nau,length)
                 for a in b:
                     print(a)
                
