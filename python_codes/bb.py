@@ -17,6 +17,8 @@ def calculate_area(frame, scale):
     return areas
 
 
+
+
 def rescale(frame, scale: float = 0.8) -> np.ndarray:  
     # Get dimensions of the original frame  
     height, width = frame.shape[:2]  
@@ -164,8 +166,9 @@ def contour_length_or_area(contour):
     
     # Determine if the contour is closed (indicating a filled shape)  
     is_closed = True if cv2.isContourConvex(contour) else False  
-    
+    print(f"calculated len:{length},area:{area}")
     # Return length if it's likely a line or curve, otherwise return area  
+    return area
     if is_closed:  
         return area  # If the contour is a closed shape (filled), return the area.  
     else:  
@@ -257,8 +260,8 @@ def main():
                 length = contour_length_or_area(cnts)
                 print(f"length is {length}")
                 nau = process_image(frame)
+                b =calculate_area(nau,length)
                 cv2.imshow("areas", nau)
-                b = calculate_area(nau,length)
                 for a in b:
                     print(a)
                
