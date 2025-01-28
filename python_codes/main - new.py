@@ -122,10 +122,7 @@ def main():
     while True:
         ret, frame = cap.read()
         frame = rescale(frame)
-        calculation_frame = frame.copy()
-        calculation_frame = process_area_frame(calculation_frame)  # Enhanced visual processing
-        scale_frame = frame.copy()
-        scale_frame = process_scale_frame(scale_frame)
+        backup_frame = frame.copy()
 
         if not ret:
             break
@@ -169,12 +166,16 @@ def main():
         # Key handling based on program state
         if key == ord('r'):  # Recalibrate scale or start calibration
             program_state = 1  # Start scale calculation
+            scale_frame = backup_frame.copy()
+            scale_frame = process_scale_frame(scale_frame)
             scale, scale_contour = calculate_scale(scale_frame)
             all_areas = []  # Reset areas after recalibration
 
         elif key == ord('p'):  # Start area calculation if in scale mode
             if program_state == 1 or program_state == 2:  # If in scale calculation state or area calculation state
                 program_state = 2  # Switch to area calculation mode
+                calculation_frame = backup_frame.copy()
+                calculation_frame = process_area_frame(calculation_frame)  # Enhanced visual processing
                 all_areas, contours = calculate_area(calculation_frame, scale)
 
                 # sort shapes by x-coordinate
