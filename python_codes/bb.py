@@ -46,18 +46,25 @@ def rescale(frame, scale: float = 0.8) -> np.ndarray:
     resized_frame = cv2.resize(frame, new_dims, interpolation=cv2.INTER_AREA)  
     
     return resized_frame
-def detect_blue_and_blackout(image):  
+def detect_blue_and_blackout(image, lower_blue=None, upper_blue=None):  
     """Detect blue areas in the image, blackout everything else, and annotate area sizes."""  
     
     # Convert the image from BGR to HSV color space  
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)  
 
-    # Define HSV range for blue color  
-    lower_blue = np.array([100, 150, 0])    # Adjusted lower range  
-    upper_blue = np.array([140, 255, 255])  # Adjusted upper range  
+    # Define HSV range for blue color if not provided  
+    if lower_blue is None:  
+        lower_blue = np.array([90, 100, 100])    # More flexible lower range  
+    if upper_blue is None:  
+        upper_blue = np.array([140, 255, 255])   # Keep the upper range  
 
     # Create a mask for detecting blue in the defined range  
     blue_mask = cv2.inRange(hsv_image, lower_blue, upper_blue)  
+
+    # Apply morphological operations to clean up the mask  
+    kernel = np.ones((5, 5), np.uint8)  # Create a kernel for morphological operations  
+    blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_CLOSE, kernel)  # Fill small holes  
+    blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_OPEN, kernel)   # Remove small noise  
 
     # Create an output image to keep only blue areas and make everything else black  
     output_image = np.zeros_like(image)  
@@ -65,26 +72,26 @@ def detect_blue_and_blackout(image):
 
     # Find contours in the blue mask  
     contours, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)  
-    cs = []
+    cs = []  
+    
     # Loop through the contours to calculate area and draw rectangles  
     for contour in contours:  
         area = cv2.contourArea(contour)  
-        if area >= 500:
-            cs.append(contour)
+        if area >= 500:  
+            cs.append(contour)  
         # Draw the contour on the output image  
-        # cv2.drawContours(output_image, [contour], -1, (0, 255, 0), 2)  # Draw contour in green  
+        cv2.drawContours(output_image, [contour], -1, (0, 255, 0), 2)  # Draw contour in green  
         
         # Calculate the position for the area text  
-        # M = cv2.moments(contour)  
-        # if M["m00"] != 0:  # To avoid division by zero  
-        #     cX = int(M["m10"] / M["m00"])  
-        #     cY = int(M["m01"] / M["m00"])  
-        #     # Annotate the area on the output image  
-        #     cv2.putText(output_image, f"Area: {int(area)}", (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)  
+        M = cv2.moments(contour)  
+        if M["m00"] != 0:  # To avoid division by zero  
+            cX = int(M["m10"] / M["m00"])  
+            cY = int(M["m01"] / M["m00"])  
+            # Annotate the area on the output image  
+            cv2.putText(output_image, f"Area: {int(area)}", (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)  
 
-    return output_image, cs
-
-def blue_show(image,cnts,areas,index):  
+    return output_image, cs 
+def blue_show(image,cnts,areas,index,A=1):  
     """Detect blue areas in the image, blackout everything else, and annotate area sizes."""  
 
     # Convert the image from BGR to HSV color space  
@@ -105,10 +112,9 @@ def blue_show(image,cnts,areas,index):
     output_image[blue_mask > 0] = image[blue_mask > 0]  
     # Loop through the contours to calculate area and draw rectangles  
     for i,contour in enumerate(cnts):  
-        area = cv2.contourArea(contour)  
         if i==index:
-            cv2.drawContours(output_image, [contour], -1, (0, 255, 0), 2)  # Draw contour in green  
-            
+            cv2.drawContours(output_image, [contour], -1, (255, 0, 0), 2)  # Draw contour in green  
+            area = cv2.contourArea(contour)/A
             M = cv2.moments(contour)  
             if M["m00"] != 0:  # To avoid division by zero  
                 cX = int(M["m10"] / M["m00"])  
@@ -329,21 +335,21 @@ def main():
     last_template = None
     lst_blue_cnts = None
     areas = None
-    index = 0
+    index = 1
     image_to_show = None
     while True:
         ret, frame = cap.read()
         if not ret:
             print("Error: Failed to capture image.")
             break
-        frame = rescale(frame,0.7)
-        key = cv2.waitKey(1) & 0xFF
+        frame = rescale(frame,0.5)
+        key = cv2.waitKey(10) & 0xFF
         if flag:
-            if key == 81:  # Left arrow key  
+            if key == ord('a'):  # Left arrow key  
                 index -=1
-            elif key == 83:  # Right arrow key  
+            elif key == ord('d'):  # Right arrow key  
                 index +=1
-            image_to_show = blue_show(last_blues,lst_blue_cnts,areas ,(index%len(areas))+len(areas)%len(areas))
+            image_to_show = blue_show(image=frame,cnts=lst_blue_cnts,areas=areas ,index=((index%len(areas))+len(areas))%len(areas)) # ((index%len(areas))+len(areas))%len(areas)
         else:
             image_to_show = frame
         cv2.imshow("result",image_to_show)
@@ -360,10 +366,9 @@ def main():
                 flag = True
                 index = 0
                 nau = detect_red_and_blackout(frame)
-                cv2.imshow("reds", nau)
+                # cv2.imshow("reds", nau)
                 cnts = last_template(nau)
                 A = cv2.contourArea(cnts)
-                print(A)
                 # Draw matches
                 length = contour_length_or_area(cnts)
                 print(f"length is {length}")
@@ -371,10 +376,10 @@ def main():
                 blu,lst_blue_cnts=detect_blue_and_blackout(frame)
                 last_blues = blu
                 image_to_show = last_blues
-                areas = calculate_area(blu,length)
-                cv2.imshow("areas", blu)
+                areas = calculate_area(blu,1)
+                # cv2.imshow("areas", blu)
                 for a in areas:
-                    print(a)
+                    print(a/A)
                
 
         if key == 27:  # ESC key to exit
