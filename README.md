@@ -2,7 +2,7 @@
 
 ## Team 10  
 - Seyed Mohammadreza Javadi: 402105868  
-- Mohammadreza Izadi  
+- Mohamadreza Izady 402110916
 - Kasra Montazeri: 402106575  
 
 ## Overview  
