@@ -66,9 +66,9 @@ def detect_blue_and_blackout(image, lower_blue=None, upper_blue=None):
     blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_CLOSE, kernel)  # Fill small holes  
     blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_OPEN, kernel)   # Remove small noise  
 
-    # Create an output image to keep only blue areas and make everything else black  
+    # Create a color output image with blue areas preserved  
     output_image = np.zeros_like(image)  
-    output_image[blue_mask > 0] = image[blue_mask > 0]  
+    output_image[blue_mask > 0] = image[blue_mask > 0]  # Retain the original blue areas  
 
     # Find contours in the blue mask  
     contours, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)  
@@ -79,8 +79,9 @@ def detect_blue_and_blackout(image, lower_blue=None, upper_blue=None):
         area = cv2.contourArea(contour)  
         if area >= 500:  
             cs.append(contour)  
-        # Draw the contour on the output image  
-        cv2.drawContours(output_image, [contour], -1, (0, 255, 0), 2)  # Draw contour in green  
+
+        # Draw the contour in green   
+        cv2.drawContours(output_image, [contour], -1, (0, 255, 0), 2)  
         
         # Calculate the position for the area text  
         M = cv2.moments(contour)  
@@ -90,7 +91,17 @@ def detect_blue_and_blackout(image, lower_blue=None, upper_blue=None):
             # Annotate the area on the output image  
             cv2.putText(output_image, f"Area: {int(area)}", (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)  
 
-    return output_image, cs 
+    # Apply Canny edge detection on the original image to find edges  
+    edges = cv2.Canny(blue_mask, 100, 200)  
+
+    # Convert edges to 3 channels so they can be combined with the output image  
+    edges_colored = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)  
+
+    # Combine the colored output image with the edges  
+    combined_output = cv2.addWeighted(output_image, 0.8, edges_colored, 0.2, 0)  
+
+    return combined_output, cs  
+
 def blue_show(image,cnts,areas,index,A=1):  
     """Detect blue areas in the image, blackout everything else, and annotate area sizes."""  
 
@@ -337,6 +348,7 @@ def main():
     areas = None
     index = 1
     image_to_show = None
+    A=1
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -349,7 +361,7 @@ def main():
                 index -=1
             elif key == ord('d'):  # Right arrow key  
                 index +=1
-            image_to_show = blue_show(image=frame,cnts=lst_blue_cnts,areas=areas ,index=((index%len(areas))+len(areas))%len(areas)) # ((index%len(areas))+len(areas))%len(areas)
+            image_to_show = blue_show(image=frame,cnts=lst_blue_cnts,areas=areas ,index=((index%len(areas))+len(areas))%len(areas),A=A) # ((index%len(areas))+len(areas))%len(areas)
         else:
             image_to_show = frame
         cv2.imshow("result",image_to_show)
@@ -368,7 +380,7 @@ def main():
                 nau = detect_red_and_blackout(frame)
                 # cv2.imshow("reds", nau)
                 cnts = last_template(nau)
-                A = cv2.contourArea(cnts)
+                
                 # Draw matches
                 length = contour_length_or_area(cnts)
                 print(f"length is {length}")
@@ -377,6 +389,7 @@ def main():
                 last_blues = blu
                 image_to_show = last_blues
                 areas = calculate_area(blu,1)
+                A = length **2
                 # cv2.imshow("areas", blu)
                 for a in areas:
                     print(a/A)
