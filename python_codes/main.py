@@ -18,7 +18,6 @@ def calculate_area(frame, scale):
     
     return areas
 
-
 def draw_contours(frame):  
     # Convert the frame to grayscale  
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  
@@ -46,6 +45,7 @@ def rescale(frame, scale: float = 0.8) -> np.ndarray:
     resized_frame = cv2.resize(frame, new_dims, interpolation=cv2.INTER_AREA)  
     
     return resized_frame
+
 def detect_blue_and_blackout(image, lower_blue=None, upper_blue=None):  
     """Detect blue areas in the image, blackout everything else, and annotate area sizes."""  
     
@@ -164,7 +164,6 @@ def detect_red_and_blackout(image):
 
     return output_image
 
-
 def find_contours(frame):  
     """Detect contours of objects in the given frame."""  
     # Convert the frame to grayscale  
@@ -200,7 +199,6 @@ def get_most_similar_contour(reference_contour, contours):
                 best_match = contour  
     
     return best_match  
-
 
 def similarity_detector(reference_frame):  
     """Create a function to detect most similar objects in subsequent frames."""  
@@ -333,9 +331,10 @@ def draw_contours_with_numbers(frame, contours, numbers):
         cv2.putText(frame, str(numbers[i]), (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)  
 
     return frame
+
 def main():
     global last_template 
-    cap = cv2.VideoCapture('http://192.168.1.8:8080/video')  # Use webcam (change to camera URL if necessary)
+    cap = cv2.VideoCapture('http://192.168.50.181:8080/video')  # Use webcam (change to camera URL if necessary)
 
     if not cap.isOpened():
         print("Error: Camera not accessible.")
